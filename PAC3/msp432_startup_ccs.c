@@ -58,6 +58,7 @@ extern void EUSCIA0_IRQHandler(void);
 extern void xPortSysTickHandler( void );
 extern void vPortSVCHandler( void );
 extern void xPortPendSVHandler( void );
+extern void ADC_Handler(void);
 
 /*-----------------------------------------------------------*/
 /* Intrrupt vector table.  Note that the proper constructs must be placed on this to  */
@@ -105,7 +106,7 @@ void (* const interruptVectors[])(void) =
     defaultISR,                             /* EUSCIB1 ISR               */
     defaultISR,                             /* EUSCIB2 ISR               */
     defaultISR,                             /* EUSCIB3 ISR               */
-    defaultISR,                            /* ADC14 ISR                 */
+    ADC_Handler,                            /* ADC14 ISR                 */
     defaultISR,                             /* T32_INT1 ISR              */
     defaultISR,                             /* T32_INT2 ISR              */
     defaultISR,                             /* T32_INTC ISR              */

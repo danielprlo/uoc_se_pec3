@@ -83,7 +83,7 @@ static void UARTPrintingTask(void *pvParameters);
 static void ProcessingTask(void *pvParameters);
 
 // callbacks & functions
-
+void callback(adc_result input);
 
 
 //Task sync tools and variables
@@ -125,6 +125,7 @@ static void HeartBeatTask(void *pvParameters){
 static void ADCReadingTask(void *pvParameters) {
 
     for(;;){
+        edu_boosterpack_accelerometer_read();
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
     }
 }
@@ -143,6 +144,16 @@ static void ProcessingTask(void *pvParameters) {
     }
 }
 
+void callback(adc_result input) {
+    char message[50];
+
+    float x = input[0];
+    float y = input[1];
+    float z = input[2];
+
+    sprintf(message, "X-accel: %.1f, Y-accel: %.1f, Z-accel: %.1f \n\r", x, y, z);
+    uart_print(message);
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -165,7 +176,9 @@ int main(int argc, char** argv)
 
 
     /* Initialize the joystick*/
+    edu_boosterpack_accelerometer_init();
 
+    edu_boosterpack_accelerometer_set_callback(callback);
 
 
     if ( (xButtonPressed != NULL) && (xQueueCommands != NULL) && (xQueueADC != NULL)) {

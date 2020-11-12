@@ -112,4 +112,3 @@ void ADC_Handler(void)
         adc_callback_func(results_buffer);
     }
 }
-
