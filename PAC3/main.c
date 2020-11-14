@@ -183,7 +183,7 @@ static void PrintPlay(int newPlay) {
     char *play;
 
     if (newPlay == rock) {
-        play = "PIEDRA";
+        play = "PIEDRA ";
     }
 
     if (newPlay == scissors) {
@@ -191,7 +191,7 @@ static void PrintPlay(int newPlay) {
     }
 
     if (newPlay == paper) {
-        play = "PAPEL";
+        play = "PAPEL  ";
     }
 
     sprintf(message, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", play);
