@@ -81,7 +81,7 @@ static void HeartBeatTask(void *pvParameters);
 static void ADCReadingTask(void *pvParameters);
 static void UARTPrintingTask(void *pvParameters);
 static void ProcessingTask(void *pvParameters);
-
+static void PrintPlay(int newPlay);
 // callbacks & functions
 void callback(adc_result input);
 
@@ -106,10 +106,10 @@ typedef enum{
     scissors = 2,
 }play;
 
-play my_play = rock;    //variables globales que contienen la jugada del usuario (my_play) y la jugada de la máquina (machine_play)
+play my_play = paper;    //variables globales que contienen la jugada del usuario (my_play) y la jugada de la máquina (machine_play)
 play machine_play;
-
-
+bool firstInitialization = true;
+bool ignoreNextReading = false;
 /*----------------------------------------------------------------------------*/
 
 static void HeartBeatTask(void *pvParameters){
@@ -123,9 +123,36 @@ static void HeartBeatTask(void *pvParameters){
 
 
 static void ADCReadingTask(void *pvParameters) {
-
+    float y;
     for(;;){
-        edu_boosterpack_joystick_read();
+        if (!ignoreNextReading) {
+            edu_boosterpack_joystick_read();
+
+            if( xQueueReceive( xQueueADC, &y, portMAX_DELAY ) == pdPASS){
+                //Right choice
+               if (y > 13000) {
+                   int newPlay = (((int)my_play+1) > 2) ? 0 : (int)my_play+1;
+                   my_play = newPlay;
+                   PrintPlay(newPlay);
+                   ignoreNextReading = true;
+                   //xQueueSendFromISR(xQueueUART, &newPlay, NULL);
+               }
+
+               //Left choice
+               if (y < 3000) {
+                   int newPlay = (((int)my_play-1) < 0) ? 2 : (int)my_play-1;
+                   my_play = newPlay;
+                   PrintPlay(newPlay);
+                   ignoreNextReading = true;
+                   //xQueueSendFromISR(xQueueUART, &newPlay, NULL);
+               }
+
+            }
+        } else {
+            ignoreNextReading = false;
+        }
+
+
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
     }
 }
@@ -133,8 +160,34 @@ static void ADCReadingTask(void *pvParameters) {
 static void UARTPrintingTask(void *pvParameters) {
 
     for(;;){
+        if (firstInitialization == true) {
+            PrintPlay(my_play);
+            firstInitialization = false;
+        }
+
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
     }
+}
+
+static void PrintPlay(int newPlay) {
+    char message[50];
+    char *play;
+
+    if (newPlay == rock) {
+        play = "PIEDRA";
+    }
+
+    if (newPlay == scissors) {
+        play = "TIJERAS";
+    }
+
+    if (newPlay == paper) {
+        play = "PAPEL";
+    }
+
+    sprintf(message, "Introduce tu jugada: %s \n\r", play);
+    uart_print(message);
+
 }
 
 static void ProcessingTask(void *pvParameters) {
@@ -149,9 +202,9 @@ void callback(adc_result input) {
 
     float x = input[0];
     float y = input[1];
+    //y 13000, 3000
 
-    sprintf(message, "X-joystick: %.1f, Y-joystick: %.1f \n\r", x, y);
-    uart_print(message);
+    xQueueSendFromISR(xQueueADC, &y, NULL);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -176,7 +229,6 @@ int main(int argc, char** argv)
 
     /* Initialize the joystick*/
     edu_boosterpack_joystick_init();
-
     edu_boosterpack_joystick_set_callback(callback);
 
 
