@@ -133,18 +133,20 @@ static void ADCReadingTask(void *pvParameters) {
                if (y > 13000) {
                    int newPlay = (((int)my_play+1) > 2) ? 0 : (int)my_play+1;
                    my_play = newPlay;
-                   PrintPlay(newPlay);
+                   //PrintPlay(newPlay);
                    ignoreNextReading = true;
-                   //xQueueSendFromISR(xQueueUART, &newPlay, NULL);
+                   message_code message = play_update_message;
+                   xQueueSendFromISR(xQueueCommands, &message, NULL);
                }
 
                //Left choice
                if (y < 3000) {
                    int newPlay = (((int)my_play-1) < 0) ? 2 : (int)my_play-1;
                    my_play = newPlay;
-                   PrintPlay(newPlay);
+                   //PrintPlay(newPlay);
                    ignoreNextReading = true;
-                   //xQueueSendFromISR(xQueueUART, &newPlay, NULL);
+                   message_code message = play_update_message;
+                   xQueueSendFromISR(xQueueCommands, &message, NULL);
                }
 
             }
@@ -159,10 +161,17 @@ static void ADCReadingTask(void *pvParameters) {
 
 static void UARTPrintingTask(void *pvParameters) {
 
+    message_code message;
     for(;;){
         if (firstInitialization == true) {
             PrintPlay(my_play);
             firstInitialization = false;
+        }
+
+        if( xQueueReceive( xQueueCommands, &message, portMAX_DELAY ) == pdPASS){
+            if (message == play_update_message) {
+                PrintPlay(my_play);
+            }
         }
 
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
@@ -185,7 +194,9 @@ static void PrintPlay(int newPlay) {
         play = "PAPEL";
     }
 
-    sprintf(message, "Introduce tu jugada: %s \n\r", play);
+    sprintf(message, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", play);
+    uart_print(message);
+    sprintf(message, "Introduce tu jugada: %s", play);
     uart_print(message);
 
 }
@@ -198,11 +209,8 @@ static void ProcessingTask(void *pvParameters) {
 }
 
 void callback(adc_result input) {
-    char message[50];
-
     float x = input[0];
     float y = input[1];
-    //y 13000, 3000
 
     xQueueSendFromISR(xQueueADC, &y, NULL);
 }
