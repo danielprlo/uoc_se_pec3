@@ -50,7 +50,7 @@
 /* MSP432 drivers includes */
 #include "msp432_launchpad_board.h"
 #include "uart_driver.h"
-#include "edu_boosterpack_accelerometer.h"
+#include "edu_boosterpack_joystick.h"
 
 
 
@@ -125,7 +125,7 @@ static void HeartBeatTask(void *pvParameters){
 static void ADCReadingTask(void *pvParameters) {
 
     for(;;){
-        edu_boosterpack_accelerometer_read();
+        edu_boosterpack_joystick_read();
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
     }
 }
@@ -149,9 +149,8 @@ void callback(adc_result input) {
 
     float x = input[0];
     float y = input[1];
-    float z = input[2];
 
-    sprintf(message, "X-accel: %.1f, Y-accel: %.1f, Z-accel: %.1f \n\r", x, y, z);
+    sprintf(message, "X-joystick: %.1f, Y-joystick: %.1f \n\r", x, y);
     uart_print(message);
 }
 
@@ -176,9 +175,9 @@ int main(int argc, char** argv)
 
 
     /* Initialize the joystick*/
-    edu_boosterpack_accelerometer_init();
+    edu_boosterpack_joystick_init();
 
-    edu_boosterpack_accelerometer_set_callback(callback);
+    edu_boosterpack_joystick_set_callback(callback);
 
 
     if ( (xButtonPressed != NULL) && (xQueueCommands != NULL) && (xQueueADC != NULL)) {

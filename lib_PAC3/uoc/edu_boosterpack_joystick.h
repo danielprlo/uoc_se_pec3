@@ -51,11 +51,11 @@ typedef uint16_t adc_result[ACCEL_AXIS];
 
 /*--------------------------------prototypes----------------------------------*/
 
-void edu_boosterpack_accelerometer_init(void);
-void edu_boosterpack_accelerometer_set_callback(adc_callback_t callback);
-void edu_boosterpack_accelerometer_read(void);
-void edu_boosterpack_accelerometer_clear_callback(void);
-void edu_boosterpack_accelerometer_disable(void);
+void edu_boosterpack_joystick_init(void);
+void edu_boosterpack_joystick_set_callback(adc_callback_t callback);
+void edu_boosterpack_joystick_read(void);
+void edu_boosterpack_joystick_clear_callback(void);
+void edu_boosterpack_joystick_disable(void);
 
 /*--------------------------------variables-----------------------------------*/
 /*----------------------------------public------------------------------------*/

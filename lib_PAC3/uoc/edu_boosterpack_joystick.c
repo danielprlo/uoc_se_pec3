@@ -34,7 +34,7 @@
 
 /*--------------------------------includes------------------------------------*/
 
-#include <edu_boosterpack_accelerometer.h>
+#include <edu_boosterpack_joystick.h>
 #include <string.h>
 #include "driverlib.h"
 
@@ -47,7 +47,7 @@ adc_callback_t adc_callback_func;
 adc_result results_buffer;
 /*----------------------------------public------------------------------------*/
 
-void edu_boosterpack_accelerometer_init(void){
+void edu_boosterpack_joystick_init(void){
     /* Zero-filling results buffer */
     memset(results_buffer, 0x00, ACCEL_AXIS);
     /* Setting reference voltage to 2.5  and enabling reference */
@@ -57,13 +57,13 @@ void edu_boosterpack_accelerometer_init(void){
     MAP_ADC14_enableModule();
     MAP_ADC14_initModule(ADC_CLOCKSOURCE_MCLK,  ADC_PREDIVIDER_1,  ADC_DIVIDER_1, 0);
     /* Configuring GPIOs for Analog In */
-    MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P6, GPIO_PIN1, GPIO_TERTIARY_MODULE_FUNCTION);
-    MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P4, GPIO_PIN0 | GPIO_PIN2, GPIO_TERTIARY_MODULE_FUNCTION);
+    MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P6, GPIO_PIN0, GPIO_TERTIARY_MODULE_FUNCTION);
+    MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P4, GPIO_PIN4, GPIO_TERTIARY_MODULE_FUNCTION);
     /* Configuring ADC conversion mode and ADC Memory (ADC_MEM0 - ADC_MEM2 (A14, A13, A11) */
     MAP_ADC14_configureMultiSequenceMode(ADC_MEM0, ADC_MEM2, false);
-    MAP_ADC14_configureConversionMemory(ADC_MEM0, ADC_VREFPOS_AVCC_VREFNEG_VSS, ADC_INPUT_A14, false);
-    MAP_ADC14_configureConversionMemory(ADC_MEM1, ADC_VREFPOS_AVCC_VREFNEG_VSS, ADC_INPUT_A13, false);
-    MAP_ADC14_configureConversionMemory(ADC_MEM2, ADC_VREFPOS_AVCC_VREFNEG_VSS, ADC_INPUT_A11, false);
+    MAP_ADC14_configureConversionMemory(ADC_MEM0, ADC_VREFPOS_AVCC_VREFNEG_VSS, ADC_INPUT_A9, false);
+    MAP_ADC14_configureConversionMemory(ADC_MEM1, ADC_VREFPOS_AVCC_VREFNEG_VSS, ADC_INPUT_A15, false);
+
     /* Enabling the interrupt when a conversion on channel 2 (end of sequence) is complete and enabling conversions */
     MAP_ADC14_enableInterrupt(ADC_INT2);
     // Set up priority in ADC14 interrupt
@@ -74,13 +74,13 @@ void edu_boosterpack_accelerometer_init(void){
     MAP_ADC14_enableSampleTimer(ADC_AUTOMATIC_ITERATION);
 }
 
-void edu_boosterpack_accelerometer_read(void){
+void edu_boosterpack_joystick_read(void){
     /* Trigger the start of the sample */
     MAP_ADC14_enableConversion();
     MAP_ADC14_toggleConversionTrigger();
 }
 
-void edu_boosterpack_accelerometer_disable(void){
+void edu_boosterpack_joystick_disable(void){
     /* Disable conversion */
     ADC14_disableConversion ();
     /* Disable interrupts */
@@ -90,11 +90,11 @@ void edu_boosterpack_accelerometer_disable(void){
     MAP_ADC14_disableModule();
 }
 
-void edu_boosterpack_accelerometer_set_callback(adc_callback_t callback){
+void edu_boosterpack_joystick_set_callback(adc_callback_t callback){
     adc_callback_func = callback;
 }
 
-void edu_boosterpack_accelerometer_clear_callback(void){
+void edu_boosterpack_joystick_clear_callback(void){
     adc_callback_func = NULL;
 }
 
