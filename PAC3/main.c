@@ -114,6 +114,7 @@ play my_play = paper;    //variables globales que contienen la jugada del usuari
 play machine_play = NULL;
 bool firstInitialization = true;
 bool ignoreNextReading = false;
+TickType_t xTicks;
 /*----------------------------------------------------------------------------*/
 
 static void HeartBeatTask(void *pvParameters){
@@ -241,18 +242,22 @@ static void ProcessingTask(void *pvParameters) {
     message_code winner;
 
     for(;;){
-        if (xSemaphoreTake(xButtonPressed, portMAX_DELAY) == pdPASS && xTaskGetTickCount() > pdMS_TO_TICKS(DELAY_MS) ) {
-            int randVal = rand() % 3;
-            if (randVal == 0) {
-                machine_play = rock;
-            }else if (randVal == 1) {
-                machine_play = paper;
-            } else {
-                machine_play = scissors;
+        if (xSemaphoreTake(xButtonPressed, portMAX_DELAY) == pdPASS) {
+            if (xTicks == NULL || (xTaskGetTickCount()-xTicks) > pdMS_TO_TICKS(DELAY_MS)) {
+                xTicks = xTaskGetTickCount();
+                int randVal = rand() % 3;
+                if (randVal == 0) {
+                    machine_play = rock;
+                }else if (randVal == 1) {
+                    machine_play = paper;
+                } else {
+                    machine_play = scissors;
+                }
+
+                winner = getMessageWinner();
+                xQueueSendFromISR(xQueueCommands, &winner, NULL);
             }
 
-            winner = getMessageWinner();
-            xQueueSendFromISR(xQueueCommands, &winner, NULL);
 
         }
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
