@@ -51,6 +51,7 @@
 #include "msp432_launchpad_board.h"
 #include "uart_driver.h"
 #include "edu_boosterpack_joystick.h"
+#include "edu_boosterpack_buttons.h"
 
 
 
@@ -81,11 +82,12 @@ static void HeartBeatTask(void *pvParameters);
 static void ADCReadingTask(void *pvParameters);
 static void UARTPrintingTask(void *pvParameters);
 static void ProcessingTask(void *pvParameters);
-static void PrintPlay(int newPlay);
+
 // callbacks & functions
 void callback(adc_result input);
-
-
+void buttonCallback(void);
+const char* getMove(int play);
+void printString(char str[], bool newLine);
 //Task sync tools and variables
 SemaphoreHandle_t xButtonPressed;   //semáforo para activar la tarea ProcessingTask cuando se pulsa S1
 QueueHandle_t xQueueCommands;       //cola para que tanto la tarea ADCReadingTask como ProcessingTask envien comandos de tipo message_code a la tarea UARTPrintingTask
@@ -110,6 +112,11 @@ play my_play = paper;    //variables globales que contienen la jugada del usuari
 play machine_play;
 bool firstInitialization = true;
 bool ignoreNextReading = false;
+int winLoseMatrix[3][3] = {
+     {-1, 1, 0},
+     {1, -1, 2},
+     {0, 2, -1}
+};
 /*----------------------------------------------------------------------------*/
 
 static void HeartBeatTask(void *pvParameters){
@@ -160,53 +167,88 @@ static void ADCReadingTask(void *pvParameters) {
 }
 
 static void UARTPrintingTask(void *pvParameters) {
-
+    char toPrint[50];
     message_code message;
     for(;;){
         if (firstInitialization == true) {
-            PrintPlay(my_play);
+            sprintf(toPrint, "Introduce tu jugada: %s", getMove(my_play));
+            printString(toPrint, false);
             firstInitialization = false;
         }
 
         if( xQueueReceive( xQueueCommands, &message, portMAX_DELAY ) == pdPASS){
             if (message == play_update_message) {
-                PrintPlay(my_play);
+                sprintf(toPrint, "Introduce tu jugada: %s", getMove(my_play));
+                printString(toPrint, false);
+            }else if (message == i_win_message) {
+                sprintf(toPrint, "Has ganado!");
+                printString(toPrint, true);
+            } else if (message == machine_wins_message) {
+                sprintf(toPrint, "Has ganado!");
+                printString(toPrint, true);
+            }else if (message == tie_message) {
+                sprintf(toPrint, "Has perdido!");
+                printString(toPrint, true);
             }
         }
 
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
     }
 }
-
-static void PrintPlay(int newPlay) {
+void printString(char str[], bool newLine) {
     char message[50];
-    char *play;
 
-    if (newPlay == rock) {
-        play = "PIEDRA ";
+    if (!newLine) {
+        sprintf(message, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b");
+        uart_print(message);
+    } else {
+        sprintf(message, "\n\r");
+        uart_print(message);
     }
 
-    if (newPlay == scissors) {
-        play = "TIJERAS";
-    }
-
-    if (newPlay == paper) {
-        play = "PAPEL  ";
-    }
-
-    sprintf(message, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", play);
+    sprintf(message, str);
     uart_print(message);
-    sprintf(message, "Introduce tu jugada: %s", play);
-    uart_print(message);
+}
 
+const char* getMove(int play) {
+    if (play == rock) {
+        return "PIEDRA ";
+    }
+
+    if (play == scissors) {
+        return "TIJERAS";
+    }
+
+    if (play == paper) {
+        return "PAPEL  ";
+    }
+
+    return 'Unkown move';
 }
 
 static void ProcessingTask(void *pvParameters) {
-
+    message_code message;
     for(;;){
+        if (xSemaphoreTake(xButtonPressed, portMAX_DELAY) == pdPASS) {
+            machine_play = rand() % 3;
+
+            if (my_play = machine_play) {
+                message = tie_message;
+            } else {
+                int winner = winLoseMatrix[my_play][machine_play];
+                if (winner == 1) {
+                    message = i_win_message;
+                } else {
+                    message = machine_wins_message;
+                }
+            }
+
+            xQueueSendFromISR(xQueueCommands, &message, NULL);
+        }
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
     }
 }
+
 
 void callback(adc_result input) {
     float x = input[0];
@@ -215,6 +257,10 @@ void callback(adc_result input) {
     xQueueSendFromISR(xQueueADC, &y, NULL);
 }
 
+void buttonCallback(void) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR(xButtonPressed,  xHigherPriorityTaskWoken);
+}
 /*----------------------------------------------------------------------------*/
 
 int main(int argc, char** argv)
@@ -233,7 +279,8 @@ int main(int argc, char** argv)
     uart_init(NULL);
 
     /* Initialize the button */
-
+    edu_boosterpack_buttons_init();
+    edu_boosterpack_buttons_set_callback(MSP432_EDU_BOOSTERPACK_BUTTON_S1, buttonCallback);
 
     /* Initialize the joystick*/
     edu_boosterpack_joystick_init();

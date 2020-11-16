@@ -59,6 +59,7 @@ extern void xPortSysTickHandler( void );
 extern void vPortSVCHandler( void );
 extern void xPortPendSVHandler( void );
 extern void ADC_Handler(void);
+extern void PORT5_IRQHandler(void);
 
 /*-----------------------------------------------------------*/
 /* Intrrupt vector table.  Note that the proper constructs must be placed on this to  */
@@ -119,9 +120,9 @@ void (* const interruptVectors[])(void) =
     defaultISR,                             /* DMA_INT0 ISR              */
     defaultISR,                             /* PORT1 ISR                 */
 	defaultISR,                             /* PORT2 ISR                 */
-	defaultISR,                          /* PORT3 ISR                 */
+	defaultISR,                             /* PORT3 ISR                 */
     defaultISR,                             /* PORT4 ISR                 */
-    defaultISR,                       /* PORT5 ISR                 */
+    PORT5_IRQHandler,                             /* PORT5 ISR                 */
     defaultISR,                             /* PORT6 ISR                 */
     defaultISR,                             /* Reserved 41               */
     defaultISR,                             /* Reserved 42               */
