@@ -88,6 +88,8 @@ void callback(adc_result input);
 void buttonCallback(void);
 const char* getMove(int play);
 void printString(char str[], bool newLine);
+void restartGame();
+enum message_code getMessageWinner(void);
 //Task sync tools and variables
 SemaphoreHandle_t xButtonPressed;   //semáforo para activar la tarea ProcessingTask cuando se pulsa S1
 QueueHandle_t xQueueCommands;       //cola para que tanto la tarea ADCReadingTask como ProcessingTask envien comandos de tipo message_code a la tarea UARTPrintingTask
@@ -95,7 +97,7 @@ QueueHandle_t xQueueADC;
 
 
 
-typedef enum{
+typedef enum message_code{
     play_update_message = 0,
     i_win_message = 1,
     machine_wins_message = 2,
@@ -109,14 +111,9 @@ typedef enum{
 }play;
 
 play my_play = paper;    //variables globales que contienen la jugada del usuario (my_play) y la jugada de la máquina (machine_play)
-play machine_play;
+play machine_play = NULL;
 bool firstInitialization = true;
 bool ignoreNextReading = false;
-int winLoseMatrix[3][3] = {
-     {-1, 1, 0},
-     {1, -1, 2},
-     {0, 2, -1}
-};
 /*----------------------------------------------------------------------------*/
 
 static void HeartBeatTask(void *pvParameters){
@@ -180,20 +177,34 @@ static void UARTPrintingTask(void *pvParameters) {
             if (message == play_update_message) {
                 sprintf(toPrint, "Introduce tu jugada: %s", getMove(my_play));
                 printString(toPrint, false);
-            }else if (message == i_win_message) {
-                sprintf(toPrint, "Has ganado!");
+            } else {
+                sprintf(toPrint, "La maquina ha escogido: %s", getMove(machine_play));
                 printString(toPrint, true);
-            } else if (message == machine_wins_message) {
-                sprintf(toPrint, "Has ganado!");
-                printString(toPrint, true);
-            }else if (message == tie_message) {
-                sprintf(toPrint, "Has perdido!");
-                printString(toPrint, true);
+                if (message == i_win_message) {
+                    sprintf(toPrint, "Tu ganas!");
+                    printString(toPrint, true);
+                } else if (message == machine_wins_message) {
+                    sprintf(toPrint, "Tu pierdes!");
+                    printString(toPrint, true);
+                }else if (message == tie_message) {
+                    sprintf(toPrint, "Empate!");
+                    printString(toPrint, true);
+                }
+                restartGame();
             }
         }
 
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
     }
+}
+
+void restartGame() {
+    char toPrint[50];
+    sprintf(toPrint, "\n\r");
+    printString(toPrint, true);
+
+    firstInitialization = true;
+    ignoreNextReading = false;
 }
 void printString(char str[], bool newLine) {
     char message[50];
@@ -227,28 +238,48 @@ const char* getMove(int play) {
 }
 
 static void ProcessingTask(void *pvParameters) {
-    message_code message;
-    for(;;){
-        if (xSemaphoreTake(xButtonPressed, portMAX_DELAY) == pdPASS) {
-            machine_play = rand() % 3;
+    message_code winner;
 
-            if (my_play = machine_play) {
-                message = tie_message;
+    for(;;){
+        if (xSemaphoreTake(xButtonPressed, portMAX_DELAY) == pdPASS && xTaskGetTickCount() > pdMS_TO_TICKS(DELAY_MS) ) {
+            int randVal = rand() % 3;
+            if (randVal == 0) {
+                machine_play = rock;
+            }else if (randVal == 1) {
+                machine_play = paper;
             } else {
-                int winner = winLoseMatrix[my_play][machine_play];
-                if (winner == 1) {
-                    message = i_win_message;
-                } else {
-                    message = machine_wins_message;
-                }
+                machine_play = scissors;
             }
 
-            xQueueSendFromISR(xQueueCommands, &message, NULL);
+            winner = getMessageWinner();
+            xQueueSendFromISR(xQueueCommands, &winner, NULL);
+
         }
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
     }
 }
 
+enum message_code getMessageWinner(void) {
+    if (my_play == machine_play) {
+        return tie_message;
+    } else {
+        if (my_play == rock) {
+            if (machine_play == scissors) {
+                return i_win_message;
+            }
+        }else if(my_play == paper) {
+            if (machine_play == rock) {
+                return i_win_message;
+            }
+        }else if(my_play == scissors) {
+            if (machine_play == paper) {
+                return i_win_message;
+            }
+        }
+    }
+
+    return machine_wins_message;
+}
 
 void callback(adc_result input) {
     float x = input[0];
