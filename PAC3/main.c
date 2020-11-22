@@ -67,7 +67,7 @@
 #define HEART_BEAT_ON_MS            ( 10 )
 #define HEART_BEAT_OFF_MS           ( 990 )
 #define DELAY_MS                    ( 100 )
-
+#define DELAY_DEBOUNCING            ( 200 )
 
 #define QUEUE_SIZE                  ( 10 )
 #define TX_UART_MESSAGE_LENGTH      ( 80 )
@@ -90,12 +90,11 @@ const char* getMove(int play);
 void printString(char str[], bool newLine);
 void restartGame();
 enum message_code getMessageWinner(void);
+
 //Task sync tools and variables
 SemaphoreHandle_t xButtonPressed;   //semáforo para activar la tarea ProcessingTask cuando se pulsa S1
 QueueHandle_t xQueueCommands;       //cola para que tanto la tarea ADCReadingTask como ProcessingTask envien comandos de tipo message_code a la tarea UARTPrintingTask
 QueueHandle_t xQueueADC;
-
-
 
 typedef enum message_code{
     play_update_message = 0,
@@ -110,10 +109,10 @@ typedef enum{
     scissors = 2,
 }play;
 
-play my_play = paper;    //variables globales que contienen la jugada del usuario (my_play) y la jugada de la máquina (machine_play)
-play machine_play = NULL;
-bool firstInitialization = true;
-bool ignoreNextReading = false;
+play my_play                = paper;    //variables globales que contienen la jugada del usuario (my_play) y la jugada de la máquina (machine_play)
+play machine_play           = NULL;
+bool firstInitialization    = true;
+bool ignoreNextReading      = false;
 TickType_t xTicks;
 /*----------------------------------------------------------------------------*/
 
@@ -132,13 +131,11 @@ static void ADCReadingTask(void *pvParameters) {
     for(;;){
         if (!ignoreNextReading) {
             edu_boosterpack_joystick_read();
-
             if( xQueueReceive( xQueueADC, &y, portMAX_DELAY ) == pdPASS){
                 //Right choice
                if (y > 13000) {
                    int newPlay = (((int)my_play+1) > 2) ? 0 : (int)my_play+1;
                    my_play = newPlay;
-                   //PrintPlay(newPlay);
                    ignoreNextReading = true;
                    message_code message = play_update_message;
                    xQueueSendFromISR(xQueueCommands, &message, NULL);
@@ -148,24 +145,21 @@ static void ADCReadingTask(void *pvParameters) {
                if (y < 3000) {
                    int newPlay = (((int)my_play-1) < 0) ? 2 : (int)my_play-1;
                    my_play = newPlay;
-                   //PrintPlay(newPlay);
                    ignoreNextReading = true;
                    message_code message = play_update_message;
                    xQueueSendFromISR(xQueueCommands, &message, NULL);
                }
-
             }
         } else {
             ignoreNextReading = false;
         }
-
 
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
     }
 }
 
 static void UARTPrintingTask(void *pvParameters) {
-    char toPrint[50];
+    char toPrint[TX_UART_MESSAGE_LENGTH];
     message_code message;
     for(;;){
         if (firstInitialization == true) {
@@ -200,15 +194,16 @@ static void UARTPrintingTask(void *pvParameters) {
 }
 
 void restartGame() {
-    char toPrint[50];
+    char toPrint[TX_UART_MESSAGE_LENGTH];
     sprintf(toPrint, "\n\r");
     printString(toPrint, true);
 
     firstInitialization = true;
     ignoreNextReading = false;
 }
+
 void printString(char str[], bool newLine) {
-    char message[50];
+    char message[TX_UART_MESSAGE_LENGTH];
 
     if (!newLine) {
         sprintf(message, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b");
@@ -243,7 +238,7 @@ static void ProcessingTask(void *pvParameters) {
 
     for(;;){
         if (xSemaphoreTake(xButtonPressed, portMAX_DELAY) == pdPASS) {
-            if (xTicks == NULL || (xTaskGetTickCount()-xTicks) > pdMS_TO_TICKS(DELAY_MS)) {
+            if (xTicks == NULL || (xTaskGetTickCount()-xTicks) > pdMS_TO_TICKS(DELAY_DEBOUNCING)) {
                 xTicks = xTaskGetTickCount();
                 int randVal = rand() % 3;
                 if (randVal == 0) {
@@ -257,8 +252,6 @@ static void ProcessingTask(void *pvParameters) {
                 winner = getMessageWinner();
                 xQueueSendFromISR(xQueueCommands, &winner, NULL);
             }
-
-
         }
         vTaskDelay( pdMS_TO_TICKS(DELAY_MS) );
     }
